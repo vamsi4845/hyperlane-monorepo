@@ -109,11 +109,36 @@ export function withChainRequired<T>(args: Argv<T>) {
   return withChain(args).demandOption('chain');
 }
 
+export function withSafeTxServiceUrlRequired<T>(args: Argv<T>) {
+  return args
+    .describe('safeTxServiceUrl', 'Custom safe transaction service url')
+    .demandOption('safeTxServiceUrl');
+}
+
+export function withThreshold<T>(args: Argv<T>) {
+  return args
+    .describe('threshold', 'threshold for multisig')
+    .number('threshold')
+    .default('threshold', 4);
+}
+
 export function withChain<T>(args: Argv<T>) {
   return args
     .describe('chain', 'chain name')
     .choices('chain', getChains())
     .alias('c', 'chain');
+}
+
+export function withChains<T>(args: Argv<T>) {
+  return (
+    args
+      .describe('chains', 'Set of chains to perform actions on.')
+      .array('chains')
+      .choices('chains', getChains())
+      // Ensure chains are unique
+      .coerce('chains', (chains: string[]) => Array.from(new Set(chains)))
+      .alias('c', 'chains')
+  );
 }
 
 export function withProtocol<T>(args: Argv<T>) {

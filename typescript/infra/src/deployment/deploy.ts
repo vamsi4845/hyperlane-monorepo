@@ -11,6 +11,7 @@ import {
 } from '@hyperlane-xyz/sdk';
 import {
   ProtocolType,
+  objFilter,
   objMap,
   objMerge,
   promiseObjAll,
@@ -35,22 +36,28 @@ import {
   writeMergedJSONAtPath,
 } from '../utils/utils.js';
 
-export async function deployWithArtifacts<Config extends object>(
-  configMap: ChainMap<Config>,
-  deployer: HyperlaneDeployer<Config, any>,
+export async function deployWithArtifacts<Config extends object>({
+  configMap,
+  deployer,
+  cache,
+  targetNetworks,
+  agentConfig,
+}: {
+  configMap: ChainMap<Config>;
+  deployer: HyperlaneDeployer<Config, any>;
   cache: {
     verification: string;
     read: boolean;
     write: boolean;
     environment: DeployEnvironment;
     module: Modules;
-  },
-  targetNetwork?: ChainName,
+  };
+  targetNetworks: ChainName[];
   agentConfig?: {
     multiProvider: MultiProvider;
     environment: DeployEnvironment;
-  },
-) {
+  };
+}) {
   if (cache.read) {
     const addressesMap = getAddresses(cache.environment, cache.module);
     deployer.cacheAddressesMap(addressesMap);
@@ -64,15 +71,23 @@ export async function deployWithArtifacts<Config extends object>(
     process.exit(0); // Exit the process
   });
 
+  // Filter the config map to only deploy the target networks
+  let targetConfigMap = configMap;
+  if (targetNetworks.length > 0) {
+    targetConfigMap = objFilter(configMap, (chain, _): _ is Config =>
+      targetNetworks.includes(chain),
+    );
+  }
+
+  // Deploy the contracts
   try {
-    if (targetNetwork) {
-      deployer.deployedContracts[targetNetwork] =
-        await deployer.deployContracts(targetNetwork, configMap[targetNetwork]);
+    await deployer.deploy(targetConfigMap);
+  } catch (e: any) {
+    if (e?.message.includes('Timed out')) {
+      console.warn('Contract deployment exceeding configured timeout', e);
     } else {
-      await deployer.deploy(configMap);
+      console.error('Contract deployment failed', e);
     }
-  } catch (e) {
-    console.error('Failed to deploy contracts', e);
   }
 
   await postDeploy(deployer, cache, agentConfig);

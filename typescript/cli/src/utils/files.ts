@@ -90,7 +90,10 @@ export function tryReadYamlAtPath<T>(filepath: string): T | null {
 }
 
 export function writeYaml(filepath: string, obj: any) {
-  writeFileAtPath(filepath, yamlStringify(obj, null, 2) + '\n');
+  writeFileAtPath(
+    filepath,
+    yamlStringify(obj, { indent: 2, sortMapEntries: true }) + '\n',
+  );
 }
 
 export function mergeYaml<T extends Record<string, any>>(
@@ -209,4 +212,12 @@ export async function runFileSelectionStep(
 
   if (filename) return filename;
   else throw new Error(`No filepath entered ${description}`);
+}
+
+export function indentYamlOrJson(str: string, indentLevel: number): string {
+  const indent = ' '.repeat(indentLevel);
+  return str
+    .split('\n')
+    .map((line) => indent + line)
+    .join('\n');
 }
